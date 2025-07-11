@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200px" height="200px" viewBox="0 0 200 200" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>ChatBot WhatsApp Logo</title>
+    <defs>
+        <linearGradient x1="0%" y1="0%" x2="100%" y2="100%" id="linearGradient-1">
+            <stop stop-color="#25D366" offset="0%"></stop>
+            <stop stop-color="#128C7E" offset="100%"></stop>
+        </linearGradient>
+        <circle id="path-2" cx="100" cy="100" r="100"></circle>
+        <filter x="-7.5%" y="-7.5%" width="115.0%" height="115.0%" filterUnits="objectBoundingBox" id="filter-3">
+            <feGaussianBlur stdDeviation="5" in="SourceAlpha" result="shadowBlurInner1"></feGaussianBlur>
+            <feOffset dx="0" dy="0" in="shadowBlurInner1" result="shadowOffsetInner1"></feOffset>
+            <feComposite in="shadowOffsetInner1" in2="SourceAlpha" operator="arithmetic" k2="-1" k3="1" result="shadowInnerInner1"></feComposite>
+            <feColorMatrix values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.1 0" type="matrix" in="shadowInnerInner1"></feColorMatrix>
+        </filter>
+    </defs>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Logo">
+            <g id="Circle">
+                <use fill="url(#linearGradient-1)" fill-rule="evenodd" xlink:href="#path-2"></use>
+                <use fill="black" fill-opacity="1" filter="url(#filter-3)" xlink:href="#path-2"></use>
+                <circle stroke="#FFFFFF" stroke-width="8" cx="100" cy="100" r="96"></circle>
+            </g>
+            <g id="WhatsApp-Icon" transform="translate(40.000000, 40.000000)" fill="#FFFFFF" fill-rule="nonzero">
+                <path d="M102.4,17.92 C91.2,6.4 76.16,0 60.16,0 C27.2,0 0.32,26.88 0.32,60.16 C0.32,70.72 3.2,81.28 8.64,90.24 L0,120.96 L31.36,112.32 C39.68,117.12 49.92,119.68 60.16,119.68 L60.16,119.68 C93.12,119.68 120,92.8 120,59.52 C120,43.52 113.6,28.8 102.4,17.92 Z M60.16,109.44 C51.2,109.44 42.24,107.2 34.56,102.72 L32.64,101.76 L14.08,106.88 L19.2,88.96 L18.24,86.72 C13.12,78.72 10.56,69.44 10.56,60.16 C10.56,32.64 32.64,10.56 60.16,10.56 C73.28,10.56 85.76,15.68 94.72,24.96 C103.68,33.92 108.8,46.4 108.8,59.52 C108.8,87.04 87.68,109.44 60.16,109.44 Z" id="Shape"></path>
+                <path d="M87.04,72.96 C85.44,72.32 78.08,68.8 76.8,68.16 C75.52,67.84 74.24,67.52 73.28,68.8 C72,70.4 69.44,73.6 68.16,74.88 C67.2,76.16 65.92,76.16 64.32,75.52 C57.28,72 52.8,69.12 48.32,61.12 C46.72,58.24 50.24,58.56 53.44,52.16 C54.08,50.88 53.76,49.92 53.44,48.96 C53.12,48 49.6,40.64 48,37.44 C46.4,34.24 44.8,34.88 43.84,34.88 C42.56,34.88 41.28,34.88 40,34.88 C38.72,34.88 36.8,35.2 35.52,37.12 C34.24,39.04 30.4,42.56 30.4,49.92 C30.4,57.28 35.84,64.32 36.48,65.6 C37.44,66.88 49.6,85.44 67.84,93.44 C84.16,100.16 84.16,97.6 87.36,97.28 C90.56,96.96 96.64,93.76 98.24,90.24 C99.84,86.4 99.84,83.2 99.2,82.56 C98.88,81.28 97.6,80.96 95.68,80 L87.04,72.96 Z" id="Path"></path>
+            </g>
+            <g id="Robot" transform="translate(70.000000, 70.000000)" fill="#FFFFFF">
+                <rect id="Rectangle" x="0" y="0" width="60" height="60" rx="10"></rect>
+                <circle id="Oval" fill="#25D366" cx="20" cy="25" r="5"></circle>
+                <circle id="Oval-Copy" fill="#25D366" cx="40" cy="25" r="5"></circle>
+                <path d="M15,45 C15,45 25,55 45,45" id="Path-2" stroke="#25D366" stroke-width="4" stroke-linecap="round"></path>
+            </g>
+        </g>
+    </g>
+</svg>

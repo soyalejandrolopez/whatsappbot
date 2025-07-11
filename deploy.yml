@@ -1,0 +1,309 @@
+# ChatBot WhatsApp - Configuración de Deployment
+# Este archivo puede ser usado con herramientas de CI/CD como GitHub Actions
+
+name: Deploy ChatBot WhatsApp
+
+on:
+  push:
+    branches: [ main, production ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: chatbot_whatsapp_test
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+      
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: --health-cmd="redis-cli ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.1'
+        extensions: mbstring, dom, fileinfo, mysql, redis
+        coverage: xdebug
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Copy environment file
+      run: cp .env.example .env
+
+    - name: Install PHP dependencies
+      run: composer install --no-progress --prefer-dist --optimize-autoloader
+
+    - name: Install Node.js dependencies
+      run: npm ci
+
+    - name: Generate application key
+      run: php artisan key:generate
+
+    - name: Configure database
+      run: |
+        php artisan config:clear
+        php artisan migrate --force
+        php artisan db:seed --force
+
+    - name: Build assets
+      run: npm run build
+
+    - name: Run PHP tests
+      env:
+        DB_CONNECTION: mysql
+        DB_HOST: 127.0.0.1
+        DB_PORT: 3306
+        DB_DATABASE: chatbot_whatsapp_test
+        DB_USERNAME: root
+        DB_PASSWORD: password
+        REDIS_HOST: 127.0.0.1
+        REDIS_PORT: 6379
+      run: php artisan test --coverage
+
+    - name: Run security checks
+      run: |
+        composer audit
+        npm audit
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/production'
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.1'
+        extensions: mbstring, dom, fileinfo, mysql
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: |
+        composer install --no-dev --optimize-autoloader
+        npm ci
+
+    - name: Build assets
+      run: npm run build
+
+    - name: Deploy to server
+      uses: appleboy/ssh-action@v0.1.5
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.PRIVATE_KEY }}
+        script: |
+          cd /var/www/chatbot-whatsapp
+          git pull origin production
+          composer install --no-dev --optimize-autoloader
+          npm ci
+          npm run build
+          php artisan migrate --force
+          php artisan config:cache
+          php artisan route:cache
+          php artisan view:cache
+          php artisan queue:restart
+          sudo systemctl reload nginx
+
+---
+# Docker Compose para desarrollo local
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/var/www/html
+      - ./storage:/var/www/html/storage
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - DB_HOST=mysql
+      - DB_DATABASE=chatbot_whatsapp
+      - DB_USERNAME=root
+      - DB_PASSWORD=password
+      - REDIS_HOST=redis
+    depends_on:
+      - mysql
+      - redis
+
+  mysql:
+    image: mysql:8.0
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: chatbot_whatsapp
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - .:/var/www/html
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./docker/nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - app
+
+volumes:
+  mysql_data:
+  redis_data:
+
+---
+# Dockerfile para producción
+FROM php:8.1-fpm-alpine
+
+# Instalar dependencias del sistema
+RUN apk add --no-cache \
+    git \
+    curl \
+    libpng-dev \
+    libxml2-dev \
+    zip \
+    unzip \
+    nodejs \
+    npm
+
+# Instalar extensiones de PHP
+RUN docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd
+
+# Instalar Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Configurar directorio de trabajo
+WORKDIR /var/www/html
+
+# Copiar archivos de la aplicación
+COPY . .
+
+# Instalar dependencias
+RUN composer install --no-dev --optimize-autoloader
+RUN npm ci && npm run build
+
+# Configurar permisos
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+RUN chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
+
+# Exponer puerto
+EXPOSE 9000
+
+CMD ["php-fpm"]
+
+---
+# Configuración de Nginx
+server {
+    listen 80;
+    server_name your-domain.com;
+    root /var/www/html/public;
+    index index.php index.html;
+
+    # Configuración de logs
+    access_log /var/log/nginx/chatbot_access.log;
+    error_log /var/log/nginx/chatbot_error.log;
+
+    # Configuración de archivos estáticos
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # Configuración principal
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    # Configuración de PHP
+    location ~ \.php$ {
+        fastcgi_pass app:9000;
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        include fastcgi_params;
+        
+        # Configuración de timeouts
+        fastcgi_read_timeout 300;
+        fastcgi_send_timeout 300;
+    }
+
+    # Configuración de seguridad
+    location ~ /\.ht {
+        deny all;
+    }
+
+    location ~ /\.env {
+        deny all;
+    }
+
+    # Configuración para WhatsApp webhook
+    location /api/whatsapp/webhook {
+        try_files $uri /index.php?$query_string;
+        
+        # Rate limiting específico para webhook
+        limit_req zone=webhook burst=20 nodelay;
+    }
+
+    # Rate limiting general
+    limit_req_zone $binary_remote_addr zone=general:10m rate=10r/s;
+    limit_req_zone $binary_remote_addr zone=webhook:10m rate=50r/s;
+    
+    limit_req zone=general burst=20 nodelay;
+}
+
+# Configuración HTTPS (opcional)
+server {
+    listen 443 ssl http2;
+    server_name your-domain.com;
+    
+    ssl_certificate /etc/nginx/ssl/cert.pem;
+    ssl_certificate_key /etc/nginx/ssl/key.pem;
+    
+    # Configuración SSL moderna
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-RSA-AES256-GCM-SHA512:DHE-RSA-AES256-GCM-SHA512:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+    
+    # Resto de la configuración igual que HTTP
+    root /var/www/html/public;
+    index index.php index.html;
+    
+    # ... (resto de configuraciones)
+}
